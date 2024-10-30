@@ -1,179 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
+    <head>
+        <title>HBD Immersive</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <link type="text/css" rel="stylesheet" href="style.css">
+        <link type="text/css" rel="stylesheet" href="nav.css">
+        <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600&display=swap" rel="stylesheet">  
+        <link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400&display=swap" rel="stylesheet">
+        <link rel="icon" href="images/holiday%20logo.png">
 
-<head>
-  <title>Eric Web Proto</title>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
 
-  <link type="text/css" rel="stylesheet" href="./css/style.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script src="https://unpkg.com/typewriter-effect@latest/dist/core.js"></script>
+    </head>
 
-  <link rel="icon" type="image/png" href="">
-
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.4.1/dist/jquery.min.js"></script>
-  <script src="https://unpkg.com/typewriter-effect@latest/dist/core.js"></script>
-
-</head>
-
-<body>
-
-  <div class="wrapper">
-
-    <div class="container">
-
-      <a href="index.html">
-        <div class="cube" style="animation-duration: .6s; height: 150px; margin-left: -1px; margin-top: -1px">
-          <div class="facetopstart top"></div>
-          <div class="facestart left"></div>
-          <div class="facelongstart front marqueewrapper">
-            <h1>eric joo</h1>
-            <h2 class="marquee">m o t <span style="color: blue;">i</span> o n d e s i g n e r</h2>
-            <img src="./images/eye.gif">
-</div>
-</div>
-</a>
-</div>
+    <body>
+        // Create the instruction text
+        <div class="flex-container">
+            <div class="text-container">
+                <h1 id="khj3">Press UP or DOWN in your keyboard to move.</h1>
+            </div>
+        </div>
 
 
-  <!-- JAVASCRIPT PRELOADS & EXAMPLES -->
-
-  <span>
-
-    <!-- tilt.js -->
-    <script type="text/javascript" src="./js/vanilla-tilt.js"></script>
-    <script type="text/javascript">
-
-      var card = document.querySelectorAll(".card")
-      for (var i = 0; i < card.length; i++) {
-        card[i].setAttribute("data-tilt", "");
-        card[i].setAttribute("data-tilt-reset", "false");
-      }
-
-      VanillaTilt.init(card, {
-        reverse: true,
-        max: 30,
-        startX: -0,
-        startY: -0,
-        speed: 5000,
-
-        scale: 1.010,
-        transition: true,
-        gyroscope: true,
-        gyroscopeMaxAngleX: 20,
-        gyroscopeMinAngleX: -20
-      });
-    </script>
-
-    <script>
-
-      // Reset VanillaTilt
-
-      timeOut = 500; // delay in milliseconds
-
-      $(".container").mouseleave(function () {
-        setTimeout(function () {
-          var card = document.querySelectorAll(".card")
-          for (var i = 0; i < card.length; i++) {
-            card[i].vanillaTilt.destroy();
-          }
-          VanillaTilt.init(card, {
-            reverse: true,
-            max: 30,
-            startX: 0,
-            startY: 0,
-            speed: 5000,
-            scale: 1.010,
-            transition: true,
-            gyroscope: true,
-            gyroscopeMaxAngleX: 20,
-            gyroscopeMinAngleX: -20
-          });
-        }, timeOut);
-      })
-
-    </script>
-
-    <!--  Typewriter.js  -->
-    <script>
-      var app = document.getElementById('typewriter');
-
-      var typewriter = new Typewriter(app, {
-        loop: true,
-        delay: 75,
-      });
-
-      typewriter
-        .typeString('안녕 Welcome to // Graphics Portfolio of 경현 Eric Joo')
-        .pauseFor(50000)
-        .deleteChars(20)
-        .typeString('GRAPHIX WORKS ARCHIVE')
-        .start();
-    </script>
+        <div class="three-container">
+            // Load the video
+            <div class="scene"></div>
+            <video id="video1" playsinline webkit-playsinline muted loop autoplay width="200" height="200" src="images/Comp1.mp4" style="display: block;"></video>
+            <video id="video2" playsinline webkit-playsinline muted width="200" height="200" src="images/panorama_1029.mov" style="display: block;"></video>
 
 
-    <!-- Marquee Script -->
-    <script>
+        <script>
+            const video = document.getElementById("video2");
+            const fps = 24;
+            const totalFrames = 560;
+            let playbackInterval;
 
-      const marquees = [...document.querySelectorAll('.marquee')];
+            //Frames for interactions
+            const candleLit = 110;
+            const songPlay = 270;      
+        
+            // Helper function to convert frame to time in seconds
+            function frameToTime(frame) {
+                return frame / fps;
+            }
+        
+            // Function to play video forward from a start frame to an end frame
+            function playForwardToTarget(startFrame, endFrame) {
+                clearInterval(playbackInterval);
+                video.currentTime = frameToTime(startFrame);
+                video.playbackRate = 1;
+                video.play();
+        
+                // Stop video when it reaches the target frame
+                playbackInterval = setInterval(() => {
+                    if (video.currentTime >= frameToTime(endFrame)) {
+                        video.pause();
+                        clearInterval(playbackInterval);
+                    }
+                }, 50);
+            }
+        
+            // Function to play video backward to frame 0
+            function playBackwardToStart() {
+                clearInterval(playbackInterval);
+                video.pause();
+        
+                playbackInterval = setInterval(() => {
+                    if (video.currentTime <= frameToTime(0)) {
+                        video.currentTime = frameToTime(110);
+                    } else {
+                        video.currentTime -= 0.05;
+                    }
+                }, 50);
+            }
+        
+            // Event listeners for key press interaction
+            window.addEventListener("keydown", (e) => {
+                if (e.code === "ArrowUp" && video.currentTime < frameToTime(candleLit)) {
+                    // Play forward up to frame 110
+                    playForwardToTarget(Math.round(video.currentTime * fps), candleLit);
+                } else if (e.code === "ArrowDown" && video.currentTime < frameToTime(candleLit) && video.currentTime > frameToTime(0)) {
+                    // Play backward to start
+                    playBackwardToStart();
+                } else if (e.code === "Enter" && Math.floor(video.currentTime * fps) === candleLit) {
+                    // At frame 110, press Enter once to play to frame 270
+                    playForwardToTarget(candleLit+1, songPlay);
+                } else if (e.code === "Space" && Math.floor(video.currentTime * fps) === songPlay) {
+                    // At frame 110, press Enter once to play to frame 270
+                    playForwardToTarget(songPlay, 465);
+                } else if (e.code === "Backspace" && Math.floor(video.currentTime * fps) === 465) {
+                    // At frame 465, press Backspace once to play to the end
+                    playForwardToTarget(466, totalFrames);
+                } 
+            });
+        
+                video.addEventListener("timeupdate", () => {
+                const currentFrame = Math.floor(video.currentTime * fps);
+        
+                // Display instruction text based on the current frame
+                const app = document.getElementById('khj3');
+                const instructionText = new Typewriter(app, {
+                    loop: false,
+                    delay: 75,
+                });
+        
+                instructionText.deleteAll(10); // Clear previous instructions
+        
+                if (currentFrame === candleLit) {
+                    instructionText.typeString('Press ENTER to light up the candle.').start();
+                } else if (currentFrame === songPlay) {
+                    instructionText.typeString('Press SPACEBAR to listen to the blessing of singing.').start();
+                } else if (currentFrame === 465) {
+                    instructionText.typeString('Press BACKSPACE to blow out the candle.').start();
+                } 
+            });
+        
+            // Stop playback when the Space key is released between frames 271 and 465
+            window.addEventListener("keyup", (e) => {
+                if (e.code === "ArrowUp" || e.code === "ArrowDown") {
+                    clearInterval(playbackInterval);
+                    video.pause();
+                }
+            });
+        </script>
+    </div>
 
-      marquees.forEach((marquee) => {
-        marquee.innerHTML = marquee.innerHTML + '&nbsp;'.repeat(10);
-        marquee.i = 0;
-        marquee.step = .3;
-        marquee.width = marquee.clientWidth + 1;
-        marquee.style.position = '';
-        marquee.innerHTML = `${marquee.innerHTML}&nbsp;`.repeat(10);
+        <script src=js/three.min.js></script>
+        //<script src=js/GLTFLoader.js></script>
+        <script src=js/OrbitControls.js></script>
+        <script src=js/main.js></script>
 
-        marquee.addEventListener('mouseenter', () => (marquee.step = 0), false);
-        marquee.addEventListener('mouseleave', () => (marquee.step = .3), false);
-      });
-
-      requestAnimationFrame(move);
-
-      function move() {
-        marquees.forEach((marquee) => {
-          marquee.style.marginLeft = `-${marquee.i}px`;
-          marquee.i = marquee.i < marquee.width ? marquee.i + marquee.step : 1;
-        });
-
-        requestAnimationFrame(move);
-      }
-    </script>
-
-    <!-- Clock Script -->
-
-    <script>
-
-      (function () {
-      
-      var clockElement = document.getElementById( "clock" );
-      
-      function updateClock ( clock ) {
-        clock.innerHTML = new Date().toLocaleString('en-US', {
-          timeZone: 'pst',
-          hourCycle: 'h23',
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit"
-      });
-      }
-      
-      setInterval(function () {
-          updateClock( clockElement );
-      }, 1000);
-      
-      }());
-      
-    </script>
-
-  </span>
-
-
-
-
-</body>
-
+    </body>
 </html>
