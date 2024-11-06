@@ -1,141 +1,403 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>HBD Immersive</title>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-        <link type="text/css" rel="stylesheet" href="style.css">
-        <link type="text/css" rel="stylesheet" href="nav.css">
-        <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600&display=swap" rel="stylesheet">  
-        <link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
-        <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
-        <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400&display=swap" rel="stylesheet">
-        <link rel="icon" href="images/holiday%20logo.png">
 
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+<head>
+    <title>HBD Immersive</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="style.css">
+    <link type="text/css" rel="stylesheet" href="nav.css">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400&display=swap" rel="stylesheet">
 
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-        <script src="https://unpkg.com/typewriter-effect@latest/dist/core.js"></script>
-    </head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
 
-    <body>
-        // Create the instruction text
-        <div class="flex-container">
-            <div class="text-container">
-                <h1 id="khj3">Press UP or DOWN in your keyboard to move.</h1>
-            </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://unpkg.com/typewriter-effect@latest/dist/core.js"></script>
+    <script src=js/three.min.js></script>
+    <script src=js/GLTFLoader.js></script>
+    <script src=js/OrbitControls.js></script>
+
+
+</head>
+
+<body>
+    <!-- Instruction Text -->
+    <div class="flex-container">
+        <div class="text-container">
+            <h1 id="khj3">...?</h1>
         </div>
+    </div>
+
+    <div class="three-container">
+        <div class="scene"></div>
+
+        <!-- Music Icon for Audio Playback -->
+        <img id="musicIcon" src="images/music_icon.png" style="position: absolute; display: none; cursor: pointer;" />
+
+        <!-- Mask video (videoEye) for the initial overlay -->
+        <video id="videoEye" playsinline webkit-playsinline muted autoplay src="images/blinkMask.mp4"
+            style="display: block;"></video>
+
+        <!-- Main video (video2) for interactive control -->
+        <video id="video2" playsinline webkit-playsinline muted src="images/panorama.mov"
+            style="display: none;"></video>
+    </div>
+
+    <script>
+        let container, camera, renderer, scene, controls;
+        const sceneFOV = 90;
+
+        const songLower = 0.3;
+        const songHigher = 1.0;
+
+        const initFrame = 0;
+
+        function init() {
+            container = document.querySelector(".scene");
+
+            // Create scene and camera
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color('transparent');
+            const fov = sceneFOV;
+            const aspect = container.clientWidth / container.clientHeight;
+            const near = 0.01;
+            const far = 4000;
+            camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+            // Customize this to your starting position
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            // Setup textures and sphere geometry
+            setupMaskEffect();
+
+            // Orbit Controls - initially disabled
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            camera.position.set(0, 0, 0);
+            camera.fov = sceneFOV;
+            controls.minDistance = 200;
+            controls.maxDistance = 200;
+            controls.enableZoom = true;
+            controls.enablePan = false;
+            controls.enabled = false; // Disable controls initially
+            controls.update();
 
 
-        <div class="three-container">
-            // Load the video
-            <div class="scene"></div>
-            <video id="video1" playsinline webkit-playsinline muted loop autoplay width="200" height="200" src="images/Comp1.mp4" style="display: block;"></video>
-            <video id="video2" playsinline webkit-playsinline muted width="200" height="200" src="images/panorama_1029.mov" style="display: block;"></video>
+
+        }
+
+        // Set up mask effect with still image and video overlay
+        function setupMaskEffect() {
+            const videoEye = document.getElementById('videoEye');
+            const videoTextureEye = new THREE.VideoTexture(videoEye);
+            const stillImageTexture = new THREE.TextureLoader().load('images/frame0.png', () => {
+                console.log("Still image loaded.");
+            });
+
+            // Shader material to blend mask and still image
+            const sphereMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    baseTexture: { value: stillImageTexture },
+                    maskTexture: { value: videoTextureEye },
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D baseTexture;
+                    uniform sampler2D maskTexture;
+                    varying vec2 vUv;
+                    void main() {
+                        vec4 baseColor = texture2D(baseTexture, vUv);
+                        vec4 maskColor = texture2D(maskTexture, vUv);
+                        vec4 finalColor = mix(baseColor, vec4(0.0, 0.0, 0.0, 1.0), 1.0 - maskColor.r);
+                        gl_FragColor = finalColor;
+                    }
+                `,
+                transparent: true,
+                side: THREE.DoubleSide
+            });
+
+            const geometry = new THREE.SphereGeometry(2000, 36, 18);
+            const sphere = new THREE.Mesh(geometry, sphereMaterial);
+            sphere.rotation.y = Math.PI / 2;
+            scene.add(sphere);
+
+            videoEye.addEventListener('play', () => {
+                console.log("Mask video playing.");
+                renderMaskScene();
+            });
+
+            videoEye.addEventListener('ended', () => {
+                console.log("Mask video ended, switching to main video.");
+                switchToMainVideo();
+            });
+        }
+
+        // Render the mask scene
+        function renderMaskScene() {
+            requestAnimationFrame(renderMaskScene);
+            renderer.render(scene, camera);
+        }
+
+        // Switch to main video after mask ends
+        function switchToMainVideo() {
+            const video2 = document.getElementById('video2');
+            const videoTexture2 = new THREE.VideoTexture(video2);
+            const mainMaterial = new THREE.MeshBasicMaterial({ map: videoTexture2, side: THREE.DoubleSide });
+
+            // Replace the material with main video texture
+            scene.children[0].material = mainMaterial;
+            video2.style.display = "block";
+            video2.currentTime = initFrame;
+            video2.pause();
 
 
-        <script>
-            const video = document.getElementById("video2");
+            controls.enabled = true; // Enable controls for main video
+            enableInteractiveControl();
+        }
+
+        // Enable interactive controls
+        function enableInteractiveControl() {
+            const video2 = document.getElementById('video2');
             const fps = 24;
+            const moveStart = 0;
+            const candleLit = 80;
+            const songPlay = 270;
+            const candleBlow = 465;
             const totalFrames = 560;
-            let playbackInterval;
 
-            //Frames for interactions
-            const candleLit = 110;
-            const songPlay = 270;      
-        
-            // Helper function to convert frame to time in seconds
+            let playbackInterval;
+            // cut start to candleLit into pieces
+            const moveSteps = 5 // number to cut
+            const sectionFrames = Math.floor((candleLit - moveStart) / moveSteps); // Divide the segment into 5 pieces
+            let currentSection = 0; // Track the current section from 0 to 4
+
+            // Convert frame to time in seconds
             function frameToTime(frame) {
                 return frame / fps;
             }
-        
-            // Function to play video forward from a start frame to an end frame
+
             function playForwardToTarget(startFrame, endFrame) {
                 clearInterval(playbackInterval);
-                video.currentTime = frameToTime(startFrame);
-                video.playbackRate = 1;
-                video.play();
-        
-                // Stop video when it reaches the target frame
+                video2.currentTime = frameToTime(startFrame);
+                video2.play();
                 playbackInterval = setInterval(() => {
-                    if (video.currentTime >= frameToTime(endFrame)) {
-                        video.pause();
+                    if (video2.currentTime >= frameToTime(endFrame)) {
+                        video2.pause();
                         clearInterval(playbackInterval);
                     }
                 }, 50);
             }
-        
-            // Function to play video backward to frame 0
-            function playBackwardToStart() {
+
+            function playBackwardToTarget(startFrame, endFrame) {
                 clearInterval(playbackInterval);
-                video.pause();
-        
+                video2.currentTime = frameToTime(endFrame); // Start at endFrame to move backward
+                video2.play();
+
                 playbackInterval = setInterval(() => {
-                    if (video.currentTime <= frameToTime(0)) {
-                        video.currentTime = frameToTime(110);
+                    // Move backwards until we reach startFrame
+                    if (video2.currentTime <= frameToTime(startFrame)) {
+                        video2.pause();
+                        video2.currentTime = frameToTime(startFrame); // Ensure we end exactly at startFrame
+                        clearInterval(playbackInterval);
                     } else {
-                        video.currentTime -= 0.05;
+                        // Decrement the currentTime by a small amount (0.05 seconds)
+                        video2.currentTime -= 0.05; // You can adjust this value for different playback speeds
                     }
-                }, 50);
+                }, 50); // The interval checks every 50 milliseconds
             }
-        
-            // Event listeners for key press interaction
-            window.addEventListener("keydown", (e) => {
-                if (e.code === "ArrowUp" && video.currentTime < frameToTime(candleLit)) {
-                    // Play forward up to frame 110
-                    playForwardToTarget(Math.round(video.currentTime * fps), candleLit);
-                } else if (e.code === "ArrowDown" && video.currentTime < frameToTime(candleLit) && video.currentTime > frameToTime(0)) {
-                    // Play backward to start
-                    playBackwardToStart();
-                } else if (e.code === "Enter" && Math.floor(video.currentTime * fps) === candleLit) {
-                    // At frame 110, press Enter once to play to frame 270
-                    playForwardToTarget(candleLit+1, songPlay);
-                } else if (e.code === "Space" && Math.floor(video.currentTime * fps) === songPlay) {
-                    // At frame 110, press Enter once to play to frame 270
-                    playForwardToTarget(songPlay, 465);
-                } else if (e.code === "Backspace" && Math.floor(video.currentTime * fps) === 465) {
-                    // At frame 465, press Backspace once to play to the end
-                    playForwardToTarget(466, totalFrames);
-                } 
+
+
+            window.addEventListener("keydown", (e) => handleInteraction(e.code));
+
+            function handleInteraction(action) {
+                if (Math.floor(video2.currentTime * fps) < candleLit) {
+
+                    if (action === "ArrowUp" && currentSection < moveSteps) { // Check if there's a next section
+                        const startFrame = sectionFrames * (currentSection);
+                        const endFrame = sectionFrames * (currentSection + 1);
+                        playForwardToTarget(startFrame, endFrame);
+                        currentSection++;
+                    } else if (action === "ArrowDown" && currentSection > 0) { // Check if there's a previous section
+                        const startFrame = sectionFrames * (currentSection - 1);
+                        const endFrame = sectionFrames * (currentSection);
+                        playBackwardToTarget(startFrame, endFrame); // need changing!!
+                        currentSection--;
+                    }
+                } else if (action === "Enter" && Math.floor(video2.currentTime * fps) === candleLit) {
+                    playForwardToTarget(candleLit, songPlay);
+                } else if (action === "Space" && Math.floor(video2.currentTime * fps) === songPlay) {
+                    playForwardToTarget(songPlay, candleBlow);
+                } else if (action === "Backspace" && Math.floor(video2.currentTime * fps) === candleBlow) {
+                    playForwardToTarget(candleBlow, totalFrames);
+                }
+            }
+
+            // Mobile touch interactions
+            let startY, endY;
+            document.addEventListener("touchstart", (e) => {
+                startY = e.touches[0].clientY;
             });
-        
-                video.addEventListener("timeupdate", () => {
-                const currentFrame = Math.floor(video.currentTime * fps);
-        
-                // Display instruction text based on the current frame
-                const app = document.getElementById('khj3');
-                const instructionText = new Typewriter(app, {
-                    loop: false,
-                    delay: 75,
-                });
-        
-                instructionText.deleteAll(10); // Clear previous instructions
-        
-                if (currentFrame === candleLit) {
+
+            document.addEventListener("touchmove", (e) => {
+                endY = e.touches[0].clientY;
+            });
+
+            document.addEventListener("touchend", () => {
+                const swipeDistance = endY - startY;
+                if (swipeDistance < -50) {
+                    handleInteraction("ArrowUp");
+                } else if (swipeDistance > 50) {
+                    handleInteraction("ArrowDown");
+                } else {
+                    const currentFrame = Math.floor(video2.currentTime * fps);
+                    if (currentFrame === candleLit) {
+                        handleInteraction("Enter");
+                    } else if (currentFrame === songPlay) {
+                        handleInteraction("Space");
+                    } else if (currentFrame === candleBlow) {
+                        handleInteraction("Backspace");
+                    }
+                }
+            });
+
+            // Display instructions based on the current frame
+            video2.addEventListener("timeupdate", () => {
+                const currentFrame = Math.floor(video2.currentTime * fps);
+                const app = document.getElementById('khj3'); // font
+                const instructionText = new Typewriter(app, { loop: false, delay: 75 });
+                instructionText.deleteAll(10);
+
+
+
+                if (currentFrame === moveStart) {
+                    instructionText.typeString('Press UP or DOWN on your keyboard to move.').start();
+                } else if (currentFrame === candleLit) {
                     instructionText.typeString('Press ENTER to light up the candle.').start();
                 } else if (currentFrame === songPlay) {
                     instructionText.typeString('Press SPACEBAR to listen to the blessing of singing.').start();
-                } else if (currentFrame === 465) {
+                } else if (currentFrame === candleBlow) {
                     instructionText.typeString('Press BACKSPACE to blow out the candle.').start();
-                } 
-            });
-        
-            // Stop playback when the Space key is released between frames 271 and 465
-            window.addEventListener("keyup", (e) => {
-                if (e.code === "ArrowUp" || e.code === "ArrowDown") {
-                    clearInterval(playbackInterval);
-                    video.pause();
                 }
             });
-        </script>
-    </div>
 
-        <script src=js/three.min.js></script>
-        //<script src=js/GLTFLoader.js></script>
-        <script src=js/OrbitControls.js></script>
-        <script src=js/main.js></script>
 
-    </body>
+            // Function to add an audio icon that maintains its position relative to the camera
+            function addAudioIcon(iconFile, audioFile, offset, raycaster, hoverScale = 1.5, volumeLower = 0.2, volumeHigher = 1.0) {
+                // Define audio element
+                const audio = new Audio(audioFile);
+                audio.volume = volumeLower;
+                audio.loop = true;
+
+                // Track hover state for this icon
+                let isHovering = false;
+
+                // Create the music icon as PlaneGeometry
+                const geometry = new THREE.PlaneGeometry(60,60); // Width and height of the plane
+                const texture = new THREE.TextureLoader().load(iconFile); // Load the icon texture
+                const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+                const iconPlane = new THREE.Mesh(geometry, material);
+                iconPlane.visible = false; // Initially hidden
+                scene.add(iconPlane);
+
+                // Show icon and start audio only when video is in the specified range
+                video2.addEventListener("timeupdate", () => {
+                    const currentFrame = Math.floor(video2.currentTime * fps);
+                    if (currentFrame > songPlay && currentFrame <= candleBlow) {
+                        iconPlane.visible = true; // Show the icon
+                        if (audio.paused) audio.play(); // Play audio if it's paused
+                    } else {
+                        iconPlane.visible = false; // Hide the icon
+                        audio.pause(); // Pause the audio
+                        audio.currentTime = 0; // Reset audio to start
+                    }
+                });
+
+                // Define mouse position variable
+                const mouse = new THREE.Vector2();
+
+                // Update mouse position on move
+                window.addEventListener("mousemove", (event) => {
+                    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                });
+
+                // Render loop for updating position and detecting hover state
+                function render() {
+                    if (iconPlane.visible) {
+                        // Calculate the icon's position relative to the world's origin
+                        const worldPosition = new THREE.Vector3().copy(offset);
+                        //const iconRotation = camera.rotation;
+                        //worldPosition.applyEuler(iconRotation); // Rotate the offset with the camera
+
+                        // Position the icon plane relative to the camera
+                        iconPlane.position.copy(worldPosition).add(camera.position);
+                        // Make the icon plane face the camera's position
+                        iconPlane.lookAt(camera.position);
+
+                        // Apply the inverse of the camera's rotation to the icon plane
+                        //iconPlane.quaternion.copy(camera.quaternion).invert();
+
+                        // Detect hover state with raycasting
+                        raycaster.setFromCamera(mouse, camera);
+                        const intersects = raycaster.intersectObject(iconPlane);
+
+                        if (intersects.length > 0) {
+                            if (!isHovering) {
+                                audio.volume = volumeHigher; // Increase volume on hover
+                                isHovering = true;
+                                iconPlane.scale.set(hoverScale, hoverScale, 1); // Resize on hover
+                            }
+                        } else if (isHovering) {
+                            audio.volume = volumeLower; // Reset volume when not hovering
+                            isHovering = false;
+                            iconPlane.scale.set(1, 1, 1); // Reset size
+                        }
+                    }
+
+                    // Request next frame for render loop
+                    requestAnimationFrame(render);
+                }
+
+                // Start the render loop
+                render();
+            }
+
+            // Create a raycaster outside of the function
+            const raycaster = new THREE.Raycaster();
+
+            // Usage example for three icons
+            addAudioIcon('images/music_icon_01.png', 'audio/birth_XX_cn_01.mp3', new THREE.Vector3(-891,450,-638), raycaster);
+            addAudioIcon('images/music_icon_02.png', 'audio/birth_XX_cn_02.mp3', new THREE.Vector3(-359, 722, -888), raycaster);
+            addAudioIcon('images/music_icon_03.png', 'audio/birth_XX_cn_03.mp3', new THREE.Vector3(97, 770, -927), raycaster);
+            addAudioIcon('images/music_icon_04.png', 'audio/birth_XX_en_01.mp3', new THREE.Vector3(700, 722, -653), raycaster);
+            addAudioIcon('images/music_icon_05.png', 'audio/birth_XX_en_02.mp3', new THREE.Vector3(860, 833, 75), raycaster);
+
+
+        }
+
+        init();
+
+        window.addEventListener("resize", () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+    </script>
+</body>
+
+
 </html>

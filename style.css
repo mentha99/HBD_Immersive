@@ -228,5 +228,9 @@ canvas {
 
 #demo{ color: transparent; }
 
+#musicIcon {
+    display: none;
+}
+
 
 
