@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <link type="text/css" rel="stylesheet" href="style.css">
-    <link type="text/css" rel="stylesheet" href="nav.css">
+
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Space+Mono&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
@@ -36,20 +36,18 @@
     <div class="three-container">
         <div class="scene"></div>
 
-        <!-- Music Icon for Audio Playback -->
-        <img id="musicIcon" src="images/music_icon.png" style="position: absolute; display: none; cursor: pointer;" />
-
         <!-- Mask video (videoEye) for the initial overlay -->
         <video id="videoEye" playsinline webkit-playsinline muted autoplay src="images/blinkMask.mp4"
             style="display: block;"></video>
 
         <!-- Main video (video2) for interactive control -->
-        <video id="video2" playsinline webkit-playsinline muted src="images/panorama.mov"
+        <video id="video2" playsinline webkit-playsinline muted autoplay src="images/panorama.mp4"
             style="display: none;"></video>
     </div>
 
     <script>
         let container, camera, renderer, scene, controls;
+        let isMobileDevice = false;  // Flag to store mobile device check result
         const sceneFOV = 90;
 
         const songLower = 0.3;
@@ -79,20 +77,75 @@
             // Setup textures and sphere geometry
             setupMaskEffect();
 
-            // Orbit Controls - initially disabled
-            controls = new THREE.OrbitControls(camera, renderer.domElement);
-            camera.position.set(0, 0, 0);
-            camera.fov = sceneFOV;
-            controls.minDistance = 200;
-            controls.maxDistance = 200;
-            controls.enableZoom = true;
-            controls.enablePan = false;
-            controls.enabled = false; // Disable controls initially
-            controls.update();
 
 
+            // Use the flag to choose the appropriate controls
+            if (isMobileDevice) {
+                // Mobile device: Enable device orientation controls
+                console.log("Mobile device detected!");
+                window.addEventListener('deviceorientation', onDeviceOrientation, true);
+            } else {
+                // Orbit Controls - initially disabled
+                // Non-mobile device: Enable OrbitControls
+                console.log("Non-mobile device detected!");
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                camera.position.set(0, 0, 0);
+                camera.fov = sceneFOV;
+                controls.minDistance = 200;
+                controls.maxDistance = 200;
+                controls.enableZoom = true;
+                controls.enablePan = false;
+                controls.enabled = false; // Disable controls initially
+                controls.update();
+            }
 
         }
+
+        function isMobile() {
+            return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/.test(navigator.userAgent);
+        }
+
+        // Variables for smoothing
+        let lastAlpha = 0, lastBeta = 0, lastGamma = 0;
+        const smoothFactor = 0.1;  // Adjust for smoothing strength (0 = no smoothing, 1 = full smoothing)
+
+        // Device Orientation Event Handler with smoothing
+        function onDeviceOrientation(event) {
+            // Ensure valid values
+            if (event.alpha === null || event.beta === null || event.gamma === null) {
+                return;
+            }
+
+            const alpha = event.alpha;
+            const beta = event.beta;
+            const gamma = event.gamma;
+
+            // Smoothing: gradually interpolate to the new orientation values
+            const smoothedAlpha = lastAlpha + (alpha - lastAlpha) * smoothFactor;
+            const smoothedBeta = lastBeta + (beta - lastBeta) * smoothFactor;
+            const smoothedGamma = lastGamma + (gamma - lastGamma) * smoothFactor;
+
+            // Update the camera rotation
+            const alphaRad = THREE.MathUtils.degToRad(smoothedAlpha);
+            const betaRad = THREE.MathUtils.degToRad(smoothedBeta);
+            const gammaRad = THREE.MathUtils.degToRad(smoothedGamma);
+
+            camera.rotation.set(betaRad, gammaRad, alphaRad);
+
+            // Save the new values for next frame
+            lastAlpha = smoothedAlpha;
+            lastBeta = smoothedBeta;
+            lastGamma = smoothedGamma;
+        }
+
+        // Event listener for device orientation
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', onDeviceOrientation, false);
+        } else {
+            console.error("Device Orientation not supported on this device");
+        }
+
+
 
         // Set up mask effect with still image and video overlay
         function setupMaskEffect() {
@@ -306,7 +359,7 @@
                 let isHovering = false;
 
                 // Create the music icon as PlaneGeometry
-                const geometry = new THREE.PlaneGeometry(60,60); // Width and height of the plane
+                const geometry = new THREE.PlaneGeometry(60, 60); // Width and height of the plane
                 const texture = new THREE.TextureLoader().load(iconFile); // Load the icon texture
                 const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
                 const iconPlane = new THREE.Mesh(geometry, material);
@@ -380,7 +433,7 @@
             const raycaster = new THREE.Raycaster();
 
             // Usage example for three icons
-            addAudioIcon('images/music_icon_01.png', 'audio/birth_XX_cn_01.mp3', new THREE.Vector3(-891,450,-638), raycaster);
+            addAudioIcon('images/music_icon_01.png', 'audio/birth_XX_cn_01.mp3', new THREE.Vector3(-891, 450, -638), raycaster);
             addAudioIcon('images/music_icon_02.png', 'audio/birth_XX_cn_02.mp3', new THREE.Vector3(-359, 722, -888), raycaster);
             addAudioIcon('images/music_icon_03.png', 'audio/birth_XX_cn_03.mp3', new THREE.Vector3(97, 770, -927), raycaster);
             addAudioIcon('images/music_icon_04.png', 'audio/birth_XX_en_01.mp3', new THREE.Vector3(700, 722, -653), raycaster);
